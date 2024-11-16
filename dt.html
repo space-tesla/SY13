@@ -1,0 +1,87 @@
+Model the following Student Competition information as a document database. Consider Student competition information where the student can participate in many competitions.
+Assume appropriate attributes and collections as per the query requirements.
+Insert at least 10 documents in each collection.
+Answer the following Queries:
+a. Display the average number of students participating in each competition.
+b. Find the number of students for the programming competition.
+c. Display the names of the first three winners of each competition.
+d. Display students from class 'FY’ who participated in the 'E-Rangoli' Competition.
+Program:
+
+  
+ 
+# Start MongoDB   
+mongosh
+
+# Create and select the database
+use StudentCompetitionDB
+
+# Create and insert documents into 'competitions' collection (10 records)
+db.competitions.insertMany([
+  { _id: 1, name: "E-Rangoli", type: "Art", participants: [1, 2, 3, 4, 5] },
+  { _id: 2, name: "Programming", type: "Coding", participants: [2, 3, 6, 7] },
+  { _id: 3, name: "Quiz", type: "Knowledge", participants: [1, 4, 5, 6, 7] },
+  { _id: 4, name: "Dance", type: "Performance", participants: [8, 9, 10] },
+  { _id: 5, name: "E-Sports", type: "Gaming", participants: [3, 4, 6, 7, 8] },
+  { _id: 6, name: "Photography", type: "Art", participants: [1, 9, 10] },
+  { _id: 7, name: "Debate", type: "Speech", participants: [2, 4, 7, 8] },
+  { _id: 8, name: "Innovation", type: "Science", participants: [5, 6, 8, 10] },
+  { _id: 9, name: "Poetry", type: "Literature", participants: [1, 2, 3, 5] },
+  { _id: 10, name: "Sports", type: "Physical", participants: [2, 3, 4, 6, 9] }
+])
+
+# Create and insert documents into 'students' collection (10 records)
+db.students.insertMany([
+  { _id: 1, name: "John", class: "FY", competitions: [1, 3, 6, 9] },
+  { _id: 2, name: "Alice", class: "SY", competitions: [1, 2, 4, 7] },
+  { _id: 3, name: "Bob", class: "FY", competitions: [2, 3, 5, 9, 10] },
+  { _id: 4, name: "Charlie", class: "TY", competitions: [1, 3, 5, 7] },
+  { _id: 5, name: "David", class: "SY", competitions: [3, 5, 6, 9] },
+  { _id: 6, name: "Eva", class: "FY", competitions: [2, 5, 7, 8] },
+  { _id: 7, name: "Frank", class: "TY", competitions: [2, 3, 7, 10] },
+  { _id: 8, name: "Grace", class: "FY", competitions: [4, 5, 7] },
+  { _id: 9, name: "Hannah", class: "SY", competitions: [4, 6, 10] },
+  { _id: 10, name: "Ivy", class: "TY", competitions: [3, 5, 8] }
+])
+
+# a. Display the average number of students participating in each competition
+db.competitions.aggregate([
+  { $project: { name: 1, participantCount: { $size: "$participants" } } },
+  { $group: { _id: null, averageParticipants: { $avg: "$participantCount" } } }
+])
+
+# b. Find the number of students for the programming competition
+db.competitions.aggregate([
+  { $match: { name: "Programming" } },
+  { $project: { _id: 0, participantsCount: { $size: "$participants" } } }
+])
+
+# c. Display the names of the first three winners of each competition (simulated order of winners)
+db.competitions.aggregate([
+  { $unwind: "$participants" },
+  { $lookup: {
+      from: "students",
+      localField: "participants",
+      foreignField: "_id",
+      as: "studentDetails"
+    }
+  },
+  { $group: { _id: "$name", winners: { $push: "$studentDetails.name" } } },
+  { $project: { name: "$_id", winners: { $slice: ["$winners", 3] }, _id: 0 } }
+])
+
+# d. Display students from class 'FY' who participated in 'E-Rangoli' Competition
+db.students.aggregate([
+  { $match: { class: "FY" } },
+  { $lookup: {
+      from: "competitions",
+      localField: "competitions",
+      foreignField: "_id",
+      as: "competitionDetails"
+    }
+  },
+  { $unwind: "$competitionDetails" },
+  { $match: { "competitionDetails.name": "E-Rangoli" } },
+  { $project: { name: 1, class: 1, _id: 0 } }
+])
+
